@@ -1,7 +1,5 @@
 # vector
 
-[TOC]
-
 ## vector的介绍及使用
 
 ### vector的介绍
