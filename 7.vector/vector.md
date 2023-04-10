@@ -336,23 +336,79 @@ erase删除pos位置元素后，pos位置之后的元素会往前推移，没有
 
 这里的模拟实现不是把源码中的内容都搬下来，做个一模一样的东西，也不是造一个更好的轮子。模拟实现的目的是为了学习源码中的一些细节及核心框架。
 
-> vector.h
-
 ```C++{.line-numbers}
-#pragma once
-namespace bit
+namespace MyVector
 {
     template<class T>
     class vector
     {
     public:
+        //默认成员函数
+        //构造函数
+        vector()
+        :_start(nullptr)
+        ,_finish(nullptr)
+        ,_end_Of_Storage(nullptr)
+        {}
+        //若使用iterator做迭代器，会导致初始化的迭代器区间[first,last)只能是vector的迭代器，迭代器区间[first,last)可以是任意容器的迭代器，还可以是函数模板
+        template<class InputIterator>
+        vector(InputIterator first,InputIterator last)
+        :_start(nullptr)
+        ,_finish(nullptr)
+        ,_end_Of_Storage(nullptr)
+        {
+            while(first!=last)
+            {
+                push_back(*first);
+                ++first;
+            }
+        }
+        vector(size_t n,const T& value=T())//T类的匿名对象作为缺省值，T会调用自己的默认构造初始化
+        :_start(nullptr)
+        ,_finish(nullptr)
+        ,_end_Of_Storage(nullptr)
+        {
+            reserve(v.capacity());//不初始化，reserve会崩溃
+            for(const auto& e:v)
+            {
+                push_back(e);//拷贝数值
+            }
+        }
+        //现代写法，实现拷贝构造函数
+        vector(const vector<T>& v)
+        :_start(nullptr)
+        ,_finish(nullptr)
+        ,_end_Of_Storage(nullptr)
+        {
+            vector<T>tmp(v.begin(),v.end())
+            swap(tmp);
+        }
+        void swap(vector<T>& v)
+        {
+            std::swap(_start,v._start);
+            std::swap(_finish,v._finish)
+            std::swap(_end_Of_Storage,v._end_Of_Storage)
+        }
+        //赋值重载函数
+        vector<T>& operator=(const vector<T> v)
+        {
+            swap(v);
+            return *this;
+        }
+        //析构函数
+        ~vector()
+        {
+            if(_start)
+            {
+                delete[] _start;
+                _start=_finish=_end_Of_Storage=nullptr;
+            }
+        }
+        //迭代器及访问遍历操作
+        //Vector的迭代器是一个原生指针
         typedef T* iterator;
         typedef const T* const_iterator;
         iterator begin()
-        {
-            return _start;
-        }
-        const_iterator begin() const
         {
             return _start;
         }
@@ -360,200 +416,117 @@ namespace bit
         {
             return _finish;
         }
-        const_iterator end() const
+        //const对象调用const迭代器，只读
+        const_iterator begin()const
+        {
+            return _start;
+        }
+        const_iterator begin()const
         {
             return _finish;
         }
-        vector()
-        :_start(nullptr)
-        ,_finish(nullptr)
-        ,_endofstorage(nullptr)
-        {}
-        //类模板的成员函数还可以再定义模板参数，这样写的好处是first/last可以是list等其它容器的迭代器，只要它解引用后的类型与T匹配
-        template<class InputIterator>
-        vector(InputIterator first,InputIterator last)
-        :_start(nullptr)
-        ,_finish(nullptr)
-        ,_endofstorage(nullptr)
+        T& operator[](size_t pos)
         {
-            //这个构造函数里传的是一段迭代器区间，只有对象才知道有多少个容量
-            while(first!=last)
-            {
-                push_back(*first);
-                ++first;
-            }
+            assert(pos<size());
+            return _start[pos];
         }
-        //v2(v1)
-        //1.传统写法
-        /*
-        vector(const vector<T>& v)
+        const T& operator[](size_t pos)const
         {
-            _start=new T[v.capacity()];
-            memcpy(_start,v._start,sizeof(T)*v.size());
-            _finish=_start+v.size();
-            _endofstorage=_start+v.capacity();
+            assert(pos<size());
+            return _start[pos];
         }
-        */
-        //2.传统写法
-        //复用当前的一些接口，本质还是自己开空间，这里相对于现代写法更推荐第二种传统写法
-        /*
-        vector(const vector<T>& v)
-        :_start(nullptr)
-        ,_finish(nullptr)
-        ,_endofstorage(nullptr)
-        {
-            reserve(v.capacity());//一次性开辟好空间
-            for(const auto& e:v)//引用的目的是防止T是string等类型
-            {
-                push_back(e);
-            }
-        }
-        */
-        //3.现代写法
-        //vector的构造函数里还提供了一个显示的迭代器(它可以传其它容器或原生指针做迭代器，但是原生指针必须要求指向的空间是连续的)
-        //所以这里还需要构造一个函数，这里的传统写法对比上面的传统写法并没有优势
-        vector(const vector<T>& v)
-        :_start(nullptr)
-        ,_finish(nullptr)
-        ,_endofstorage(nullptr)
-        {
-            //现代写法里提前开空间没有意义，因为现代写法的空间是tmp去做的
-            //tmp没办法自己开辟空间,因为它不知道有多少个数据
-            vector<T> tmp(v.begin(),v.end());
-            swap(tmp);
-        }
-        void swap(vector<T>& v)
-        {
-            std::swap(_start,v._start);
-            std::swap(_finish,v._finish);
-            std::swap(_endofstorage,v._endofstorage);
-        }
-        //v1=v4
-        //1.传统写法
-        //任何容器的深拷贝都推荐现代写法，尤其是赋值操作
-        /*
-        vector<T>& operator=(const vector<T>& v)
-        {
-            if(this!=&v)
-            {
-                delete[]_start;
-                _start=_finish=_endofstorage=nullptr;
-                reserve(v.capacity());
-                for(const auto& e:v)
-                {
-                    push_back(e);
-                }
-            }
-            return *this;
-        }
-        */
-        //2.现代写法
-        vector<T>& operator=(vector<T> v)
-        {
-            //v与v1交换
-            swap(v);
-            return *this;
-        }
-        ~vector()
-        {
-            delete[]_start;
-            _start=_finish=_endofstorage=nullptr;
-        }
-        size_t size() const
+        //vector类的容量操作
+        size_t size()const
         {
             return _finish-_start;
         }
-        size_t capacity() const
+        size_t capacity()const
         {
-            return _endofstorage-_start;
+            return _end_Of_Storage-_start;
         }
-        T& operator[](size_t i)
+        bool empty()const
         {
-            assert(i<size());
-            return _start[i];
+            return _start==_finish;
         }
-        const T& operator[](size_t i) const
+        void resize(size_t n,const T& value=T())//T类的匿名对象作为缺省值，T会调用自己的默认构造初始化
         {
-            assert(i<size());
-            return _start[i];
-        }
-        void reserve(size_t n)
-        {
-            if(n>capacity())
-            {
-                //备份一份
-                size_t sz=size();
-                T* tmp=new T[n];
-                if(_start)
-                {
-                    //对于string，memcpy会引发更深层次的浅拷贝问题
-                    //memcpy(tmp,_start,sizeof(T)*size());
-                    for(size_t i=0;i<size();++i)
-                    {
-                        //如果T是string，它会调用string的operator=完成拷贝
-                        tmp[i]=_start[i];
-                    }
-                    delete[]_start;
-                }
-                _start=tmp;
-                _finish=_start+sz;
-                //_finish=_start+size();错误,size去计算时，_finish还是旧空间的_finish，而_start却是新空间的_start
-                _endofstorage=_start+n;
-            }
-        }
-        void resize(size_t n,const T& val=T())
-        {
+            //1.如果n小于当前size，则数据个数缩小为n
             if(n<=size())
             {
                 _finish=_start+n;
+                return;
             }
+            //2.空间不够则扩容
             else
             {
                 if(n>capacity())
                 {
                     reserve(n);
                 }
+                //3.将size扩大到n
                 while(_finish<_start+n)
                 {
-                    *_finish=val;
+                    *_finish=value;
                     ++_finish;
                 }
             }
         }
+        void reserve(size_t n)
+        {
+            if(n>capacity())
+            {
+                size_t oldSize=size();
+                //1.开辟新空间
+                T* tmp=new T[n];
+                //2.拷贝元素
+                //memcpy(tmp,_start,sizeof(T)*size);
+                //不可以用memcpy,如果T是内置类型或浅拷贝类型，在它们增容或者拷贝构造中，用memcpy是没有问题的(浅拷贝)
+                //但是T是需要深拷贝的自定义类型，比如string类，千万不能使用memcpy进行对象间的拷贝，因为memcpy是浅拷贝，可能会引起内存泄漏甚至程序崩溃
+                //在vs中，string的结构跟g++不同，在T(自定义类型)对象加了一个buf[16]的数组存储数据，如果数据小于16可能不会报错，实际还是有问题。
+                if(_start)
+                {
+                    for(size_t i=0;i<oldSize;++i)
+                    {
+                        tmp[i]=_start[i];//调用T(自定义类型)::operator=，赋值重载函数本来就是深拷贝
+                    }
+                    //3.释放旧空间
+                    delete[] _start;
+                }
+                _start=tmp;
+                _finish=_start+oldSize;
+                _end_Of_Storage=_start+n;
+            }
+        }
+        //vector类的修改操作
         void push_back(const T& x)
         {
-            /*
-            if(_finish==_endofstorage)
+            if(_finish==_end_Of_Storage)
             {
-                size_t newcapacity=capacity()==0?4:capacity()*2;
-                reserve(newcapacity);
+                size_t newCapacity=(0==capacity())?1:capacity()*2;
+                reserve(newCapacity);
             }
-            //这里不用像源码中一样使用定位new，因为使用定位new的原因时finish指向的空间没有初始化，所以使用定位new来构造对象
             *_finish=x;
             ++_finish;
-            */
-            insert(end(),x);
+            //insert(end(),x);
         }
         void pop_back()
         {
-            /*
-            //一般情况下，--_f_inish就行了，但是特殊情况vector为空时就不好了
-            //所以一般需要assert
             assert(!empty());
             --_finish;
-            */
-            erase(--end());
+            //erase(end()-1);
         }
+        //返回值指向新插入这个元素的位置
+        //有返回值的函数，不一定要定义变量来接收
         iterator insert(iterator pos,const T& x)
         {
-            //可以=_finish，相当于尾插
-            assert(pos>=_start&&pos<=_finish);
-            if(_finish==_endofstorage)
+            assert(pos<=_finish);
+            //空间不够先进行增容
+            if(_finish==_end_Of_Storage)
             {
-                size_t len=pos-_start;
-                size_t newcapacity+capacity()==0?4:capacity()*2;
-                //reserve里会更新三个成员变量，insert返回插入的元素地址
-                reserve(newcapacity);
+                size_t len=pos-_start;//计算pos相对_start是第几个位置
+                size_t newCapacity=(0==capacity())?1:capacity()*2;
+                reserve(newCapacity);
+                //如果发生增容，更新pos，解决增容后pos失效的问题
                 pos=_start+len;
             }
             iterator end=_finish-1;
@@ -566,9 +539,10 @@ namespace bit
             ++_finish;
             return pos;
         }
+        //方便解决：一边遍历一遍删除的迭代器失效问题
         iterator erase(iterator pos)
         {
-            assert(pos>=_start&&pos<_finish);
+            //挪动数据进行删除
             iterator it=pos+1;
             while(it!=_finish)
             {
@@ -576,32 +550,28 @@ namespace bit
                 ++it;
             }
             --_finish;
-            return pos;
+            return pos;//返回删除数据的下一个位置
+        }
+        T& front()
+        {
+            return *_start;
+        }
+        const T& front()const
+        {
+            return *_start;
+        }
+        T& back()
+        {
+            return *(_finish-1);
+        }
+        const T& back()const
+        {
+            return *(_finish-1);
         }
     private:
-    iterator _start;
-    iterator _finish;
-    iterator _endofstorage;
+        iterator _start;//指向数据块的开始
+        iterator _finish；//指向有效数据的尾
+        iterator _end_Of_Storage;//指向存储容量的尾
     };
-    void print(const vector<int>& v)//const版本的迭代器和operator[]
-    {
-        vector<int>::const_iterator it=v.begin();
-        while(it!=v.end())
-        {
-            cout<<*it<<" ";
-            ++it;
-        }
-        cout<<endl;
-        for(auto e:v)
-        {
-            cout<<e<<" ";
-        }
-        cout<<endl;
-        for(size_t i=0;i<v.size();++i)
-        {
-            cout<<v[i]<<" ";
-        }
-        cout<<endl;
-    }
 }
 ```
