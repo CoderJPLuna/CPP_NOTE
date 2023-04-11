@@ -10,6 +10,7 @@
       - [vector迭代器失效问题](#vector迭代器失效问题)
   - [vector深度剖析及模拟实现](#vector深度剖析及模拟实现)
     - [std::vector的核心框架接口的模拟实现](#stdvector的核心框架接口的模拟实现)
+    - [使用memcpy拷贝问题](#使用memcpy拷贝问题)
 
 ## vector的介绍及使用
 
@@ -421,7 +422,7 @@ namespace MyVector
         {
             return _start;
         }
-        const_iterator begin()const
+        const_iterator end()const
         {
             return _finish;
         }
@@ -575,3 +576,35 @@ namespace MyVector
     };
 }
 ```
+
+### 使用memcpy拷贝问题
+
+在模拟实现的vector时，还有一个深层次的浅拷贝问题：如果是int类型是不会出现问题的，问题出现在string上。
+
+> 假设模拟实现的vector中的reserve接口中，使用memcpy进行拷贝，以下代码会发生什么问题？
+
+> ```C++{.line-numbers}
+> int mian()
+> {
+>     MyVector::vector<string> v;
+>     v.push_back("1111");
+>     v.push_back("2222");
+>     v.push_back("3333");
+>     v.push_back("4444");
+>     v.push_back("5555");
+>     return 0;
+> }
+
+**问题分析**
+
+1. memcpy是内存的二进制格式拷贝，将一段内存空间中内容原封不动的拷贝到另外一段内存空间中。
+2. 如果拷贝的是自定义类型的元素，memcpy即高效又不会出错，但如果拷贝的是自定义类型的元素，并且自定义类型元素中涉及到资源管理时，就会出错，因为memcpy的拷贝实际是浅拷贝。
+
+**结论**
+
+如果对象中涉及到资源管理时，不能使用memcpy进行对象之间的拷贝，因为memcpy是浅拷贝，否则可能会引起内存泄漏甚至程序崩溃。
+
+![](3.svg)
+
+严格来讲，这里叫对象数组，因为每个位置存储的是一个string对象，它真正的数据是_str所指向的空间。
+当第5次push_back时需要调用reserve增容，开好空间后，memcpy将_start拷贝至tmp，_str拷贝_str、_size拷贝_size、_capacity拷贝_capacity都没有问题，关键问题是浅拷贝—，它把_start里_str所指向的空间也拷贝了，随后delete[] _start，因为数组是时string类对象，它会去调用string的析构函数将堆上的空间给释放掉，然后再把_start指向的空间给释放掉，然后_start指向tmp空间，并重新定位_finish、_endofstorage，然后再插入对象。但是tmp里每个string所指向的堆空间已经被释放了，也就是说_str所指向的空间是一块野指针空间，而当程序的生命周期结束，vector调用析构函数会再次对这块野指针空间释放。
