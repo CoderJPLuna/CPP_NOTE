@@ -1,5 +1,3 @@
-# vector
-
 - [vector](#vector)
   - [vector的介绍及使用](#vector的介绍及使用)
     - [vector的介绍](#vector的介绍)
@@ -11,6 +9,8 @@
   - [vector深度剖析及模拟实现](#vector深度剖析及模拟实现)
     - [std::vector的核心框架接口的模拟实现](#stdvector的核心框架接口的模拟实现)
     - [使用memcpy拷贝问题](#使用memcpy拷贝问题)
+
+# vector
 
 ## vector的介绍及使用
 
