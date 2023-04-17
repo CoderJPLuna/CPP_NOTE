@@ -1,10 +1,10 @@
-# STL简介
-
-STL(standard template libaray-标准模板库)：是C++标准库的重要组成部分，不仅是一个可复用的组件库，而且是一个包罗数据结构与算法的软件框架。
-
 - [STL简介](#stl简介)
   - [STL的版本](#stl的版本)
   - [STL的六大组件](#stl的六大组件)
+
+# STL简介
+
+STL(standard template libaray-标准模板库)：是C++标准库的重要组成部分，不仅是一个可复用的组件库，而且是一个包罗数据结构与算法的软件框架。
 
 ## STL的版本
 
